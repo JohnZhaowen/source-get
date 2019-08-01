@@ -1,0 +1,741 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.yh.sourceget.common.dal.mysqlsourceget.mapper.AuthorMapper">
+	<!-- 
+    ***
+    ***对外接口
+    ***
+    -->
+	
+	<!-- 判断用户是否具有指定资源的权限 -->
+	<select id="sourceget_auth_qry_auth_of_source" resultType="java.lang.Long" parameterType="java.util.Map">
+       	SELECT 
+       		COUNT(*) count
+       	FROM 
+       		author_group_user a 
+       		LEFT JOIN author_group b ON a.group_code = b.group_code
+       		LEFT JOIN author_group_source c ON c.group_code = b.group_code
+       		LEFT JOIN author_source d ON d.source_code = c.source_code
+       	WHERE 
+       		a.account = #{account} AND d.source_info = #{sourceInfo}
+    </select>
+    <!-- 判断用户在指定权限组中对哪些资源具有权限-->
+	<select id="sourceget_auth_qry_source_of_group" resultType="string" parameterType="java.util.Map">
+        SELECT
+            d.source_info sourceInfo
+        FROM 
+        	author_group_user a
+        	LEFT JOIN author_group b ON a.group_code = b.group_code
+        	LEFT JOIN author_group_source c ON c.group_code = b.group_code
+        	LEFT JOIN author_source d ON d.source_code = c.source_code
+        WHERE 
+        	a.account = #{account} AND a.group_code = #{groupCode}
+    </select>
+    
+    
+    
+    <!-- 
+    ***
+    ***权限组类型与资源类型管理
+    ***
+    -->    
+    <insert id="sourceget_group_source_type_add" parameterType="GroupSourceType">
+    	INSERT INTO 
+    		author_group_source_type (tag, type_name, parent_id, create_time)
+    	VALUES 
+    		(#{tag}, #{typeName}, #{parentId}, CURRENT_TIMESTAMP)
+    </insert>
+    
+    <insert id="sourceget_group_source_type_add_batch" parameterType="GroupSourceType">
+    	INSERT INTO 
+    		author_group_source_type (tag, type_name, parent_id, create_time)
+    	VALUES
+    	<foreach collection ="list" item="item" separator =",">
+			(#{item.tag}, #{item.typeName}, #{item.parentId}, CURRENT_TIMESTAMP)
+        </foreach >
+    </insert>
+    
+    <update id="sourceget_group_source_type_update"  parameterType="GroupSourceType">
+		UPDATE
+			author_group_source_type
+		SET
+			<if test='tag != null'>
+			tag = #{tag},
+			</if>
+			<if test='typeName != null'>
+			type_name = #{typeName},
+			</if>
+			<if test='parentId != null'>
+			parent_id = #{parentId},
+			</if>
+			update_time = CURRENT_TIMESTAMP
+		WHERE id = #{typeId}
+	</update>
+	
+	<delete id="sourceget_group_source_type_delete_by_id" parameterType="java.util.Map">
+		DELETE FROM 
+			author_group_source_type
+		WHERE 
+			id = #{id} OR parent_id = #{id}
+	</delete>
+	
+	<sql id="author_type_where">
+		<if test="tag != null">
+        AND tag = #{tag}
+        </if>        
+        <if test="typeId != null">
+        AND id = #{typeId}
+        </if>
+        <if test="parentId != null">
+        AND parent_id = #{parentId}
+        </if>
+        <if test="typeName != null">
+        AND TRIM(UPPER(UPPER(type_name))) LIKE UPPER(CONCAT(CONCAT('%', TRIM(#{typeName})), '%'))
+        </if>
+	</sql>
+	
+    <select id="sourceget_group_source_type_querytypes" resultType="java.util.Map" parameterType="java.util.Map">
+        SELECT
+            id AS typeId,
+			tag,
+			type_name AS typeName,
+			parent_id AS groupTypeId
+        FROM 
+        	author_group_source_type
+        WHERE 1 = 1
+        <include refid="author_type_where"/>
+        ORDER BY id
+        LIMIT #{offset}, #{limit}
+    </select>
+		
+    <select id="sourceget_group_source_type_querytypes_count" resultType="java.lang.Long" parameterType="java.util.Map">
+        SELECT
+            COUNT(*) as total
+        FROM 
+        	author_group_source_type
+        WHERE 1 = 1
+        <include refid="author_type_where"/>
+    </select>
+    
+  
+    <select id="sourceget_group_source_type_queryById" resultType="GroupSourceType" parameterType="java.util.Map">
+        SELECT
+            id,
+			tag,
+			type_name AS typeName,
+			parent_id AS parentId
+        FROM 
+        	author_group_source_type
+        WHERE id = #{id}
+    </select>
+  
+    <select id="sourceget_group_queryCountByType" resultType="java.lang.Long" parameterType="java.util.Map">
+        SELECT
+            COUNT(*) AS total
+        FROM 
+        	author_group
+        WHERE type_id = #{typeId} AND (del_tag IS NULL OR del_tag = '1')
+    </select>
+  
+    <select id="sourceget_source_queryCountByType" resultType="java.lang.Long" parameterType="java.util.Map">
+        SELECT
+            COUNT(*) AS total 
+        FROM 
+        	author_source
+        WHERE type_id = #{typeId} AND (del_tag IS NULL OR del_tag = '1')
+    </select>
+    
+    
+    <!-- 
+    ***
+    ***权限组管理
+    ***
+    -->
+    <!-- 根据groupCode和domain查询权限组 -->
+    <select id="sourceget_author_group_queryByCodeAndDomain" resultType="AuthorGroup" parameterType="java.util.Map">
+        SELECT
+            id,
+			group_code AS groupCode,
+			group_name AS groupName,
+			domain,
+			type_id AS typeId,
+			group_info AS groupInfo,
+			parent,
+			del_tag AS delTag,
+			operator_account AS operatorAccount,
+			DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%s') AS createTime,
+			DATE_FORMAT(update_time, '%Y-%m-%d %H:%i:%s') AS updateTime
+        FROM 
+        	author_group
+        WHERE group_code = #{groupCode} AND domain = #{domain}
+        <if test='id != null'>
+        AND id != #{id}
+        </if>
+    </select>
+    <sql id="query_group_by_creator_where">
+        <if test='id != null'>
+		AND a.id = #{id}
+        </if>
+        <if test='groupCode != null'>
+        AND TRIM(UPPER(a.group_code)) LIKE UPPER(CONCAT(CONCAT('%',TRIM(#{groupCode})),'%'))
+        </if>
+        <if test='groupName != null'>
+		AND TRIM(UPPER(a.group_name)) LIKE UPPER(CONCAT(CONCAT('%',TRIM(#{groupName})),'%'))
+        </if>
+        <if test='domain != null'>
+		AND TRIM(UPPER(a.domain)) LIKE UPPER(CONCAT(CONCAT('%',TRIM(#{domain})),'%'))
+        </if>
+        <if test='groupInfo != null'>
+		AND TRIM(UPPER(a.group_info)) LIKE UPPER(CONCAT(CONCAT('%',TRIM(#{groupInfo})),'%'))
+        </if>
+        <if test='typeId != null'>
+		AND a.type_id = #{typeId}
+        </if>
+        <if test='manageTag != null'>
+            <!-- admin组中，显示的不是权限管理组，只查询当前用户创建的权限组 -->
+        	<if test='manageTag == 0'>
+        		<if test='account != null'>
+				AND a.creator_account = #{account}
+		        </if>
+				AND a.group_code NOT LIKE CONCAT('%', '-01')
+			</if>
+			
+			<!-- 权限管理组，显示当前用户所在的权限管理组 -->
+        	<if test='manageTag == 1'>
+	        	<if test='account != null'>
+				AND c.account = #{account}
+		        </if>
+				AND a.group_code LIKE CONCAT('%', '-01')
+			</if>
+			
+			<!-- 权限管理组，显示当前用户所管理的权限组 -->
+        	<if test='manageTag == 2'>
+        	AND a.id IN (
+        		SELECT mgm_id id 
+        		FROM author_group a1 JOIN author_group_user b1 ON a1.id = b1.group_id
+				WHERE b1.account = #{account} AND a1.group_code LIKE CONCAT('%', '-01')
+			)
+			</if>
+			
+			
+        </if>
+        <if test='typeName != null'>
+		AND TRIM(UPPER(b.type_name)) LIKE UPPER(CONCAT(CONCAT('%',TRIM(#{typeName})),'%'))        
+        </if>
+        <if test='parentId != null'>
+		AND a.parent = #{parentId}        
+        </if>
+        <if test='mgmId != null'>
+		AND a.mgm_id = #{mgmId}        
+        </if>
+        <if test='delTag != null'>
+        	<if test='delTag == 1'>
+        	AND (a.del_tag = #{delTag} OR a.del_tag IS NULL)
+        	</if>
+		    <if test='delTag == 0'>
+        	AND a.del_tag = #{delTag}
+        	</if>   
+        </if>
+    </sql>
+    <select id="sourceget_author_group_queryAuthGroupsByCreator" resultType="AuthorGroup" parameterType="java.util.Map">
+        SELECT DISTINCT
+        	a.id,
+        	a.group_code groupCode,
+        	a.group_name groupName,
+        	a.domain domain,
+        	a.group_info groupInfo,
+        	a.type_id typeId,
+        	b.type_name typeName,
+        	a.parent,
+        	a.mgm_id mgmId,
+        	a.del_tag delTag
+        FROM
+        	author_group a LEFT JOIN author_group_source_type b ON a.type_id = b.id
+        	LEFT JOIN author_group_user c ON a.id = c.group_id
+        WHERE (a.domain != 'super' OR a.group_code != 'super') AND (a.domain != 'admin' OR a.group_code != 'admin')
+        AND (a.del_tag IS NULL OR a.del_tag = '1')
+        <include refid="query_group_by_creator_where"/>
+    </select>
+    <select id="sourceget_author_group_queryAuthGroupsByCreator_count" resultType="java.lang.Long" parameterType="java.util.Map">
+        SELECT
+        	COUNT(*)
+        FROM
+        	author_group a LEFT JOIN author_group_source_type b ON a.type_id = b.id
+        	LEFT JOIN author_group_user c ON a.id = c.group_id
+        WHERE (a.domain != 'super' OR a.group_code != 'super') AND (a.domain != 'admin' OR a.group_code != 'admin')
+        <include refid="query_group_by_creator_where"/>
+    </select>
+    
+    <sql id='parentAvailableWhere'>
+    	<if test='groupId != null'>
+        AND id != #{groupId}
+        AND 0 = (SELECT COUNT(*) FROM author_group WHERE parent = #{groupId})
+        </if>
+        <if test='groupIdS != null'>
+        AND id = #{groupIdS}
+        </if>
+        <if test='domain != null'>
+        AND domain = #{domain}
+        </if>
+        <if test='typeId != null'>
+        AND type_id = #{typeId}
+        </if>
+    </sql>
+    <select id="sourceget_author_group_queryParentsAvailable" resultType="java.util.Map" parameterType="java.util.Map">
+        SELECT
+        	id parent,
+        	group_name groupName        	
+        FROM
+        	author_group
+        	<!-- 作为父组的分组，不能是管理组，也不能有父组，且必须是生效的分组 -->
+        WHERE parent IS NULL AND mgm_id IS NULL AND (del_tag IS NULL OR del_tag = '1')
+        <include refid="parentAvailableWhere"/>
+    </select>
+    
+    <select id="sourceget_author_group_queryParentsAvailable_count" resultType="java.lang.Long" parameterType="java.util.Map">
+        SELECT
+        	COUNT(*)        	
+        FROM
+        	author_group
+        WHERE parent IS NULL AND mgm_id IS NULL AND (del_tag IS NULL OR del_tag = '1') 
+        <include refid="parentAvailableWhere"/>
+    </select>
+    
+    <!-- 不能创建domain为super或admin的分组，因为这两个组默认添加-->
+    <insert id="sourceget_author_group_add" parameterType="AuthorGroup" useGeneratedKeys="true" keyColumn="id" keyProperty="id">
+    	<selectKey keyProperty="id" resultType="java.lang.Long" order="AFTER">
+		SELECT LAST_INSERT_ID()
+		</selectKey>
+    	INSERT INTO 
+    		author_group (group_code, group_name, domain, type_id, group_info, parent, mgm_id, creator_account, create_time)
+    	VALUES
+			(#{groupCode}, #{groupName}, #{domain}, #{typeId}, #{groupInfo}, #{parent}, #{mgmId}, #{operatorAccount}, CURRENT_TIMESTAMP)
+    </insert>
+    
+    <!-- 将实体组和管理组同时删除，管理组的group_code为对应实体组group_code+'-01'，而且domain必须相同；这里的删除只是更改删除标记，不是物理删除 -->
+    <update id="sourceget_author_group_delete_by_id" parameterType="java.util.Map">
+		UPDATE
+			author_group
+		SET
+			operator_account = #{operatorAccount},
+			del_tag = '0',
+			update_time = CURRENT_TIMESTAMP
+		WHERE (id = #{id} OR mgm_id = #{id})
+		AND domain != 'super' AND domain != 'admin'
+	</update>
+    
+    <update id="sourceget_author_group_update" parameterType="AuthorGroup">
+		UPDATE
+			author_group
+		SET
+			group_code = #{groupCode},
+			group_name = #{groupName},
+			domain = #{domain},
+			type_id = #{typeId},
+			group_info = #{groupInfo},
+			parent = #{parent},
+			operator_account = #{operatorAccount},
+			update_time = CURRENT_TIMESTAMP
+		WHERE id = #{id} AND domain != 'super' AND domain != 'admin'
+	</update>
+    
+    <update id="sourceget_author_group_mgm_update" parameterType="AuthorGroup">
+		UPDATE
+			author_group
+		SET
+			group_code = #{groupCode},
+			group_name = #{groupName},
+			domain = #{domain},
+			type_id = #{typeId},
+			group_info = #{groupInfo},
+			parent = #{parent},
+			operator_account = #{operatorAccount},
+			update_time = CURRENT_TIMESTAMP
+		WHERE mgm_id = #{id} AND domain != 'super' AND domain != 'admin'
+	</update>
+    
+    <update id="sourceget_author_group_parent_update" parameterType="java.util.Map">
+		UPDATE
+			author_group
+		SET
+			parent = NULL,
+			operator_account = #{operatorAccount},
+			update_time = CURRENT_TIMESTAMP
+		WHERE parent = #{parent}
+	</update>
+	
+	<sql id="author_group_where">
+		<if test="groupCode != null">
+        	AND group_code = #{groupCode}
+        </if>
+        <if test="groupName != null">
+        	AND group_name = #{groupName}
+        </if>
+        <if test="domain != null">
+        	AND domain = #{domain}
+        </if>
+        <if test="typeId != null">
+        	AND type_id = #{typeId}
+        </if>
+        <if test="group_info != null">
+        	AND group_info LIKE CONCAT(CONCAT('%',#{groupInfo}), '%')
+        </if>
+        <if test="parent != null">
+        	AND parent = #{parent}
+        </if>
+	</sql>
+	
+    <select id="sourceget_author_group_querypage_count" resultType="java.lang.Long" parameterType="java.util.Map">
+        SELECT
+            COUNT(*) AS total 
+        FROM 
+        	author_group a LEFT JOIN author_group_user b ON a.id = b.group_id
+        WHERE (a.del_tag = '1' OR a.del_tag IS NULL)
+        AND b.account = #{account}
+        AND a.group_code LIKE CONCAT('%', '-01')
+        <include refid="author_group_where"/>
+    </select>
+    <select id="sourceget_author_group_querypage" resultType="AuthorGroup" parameterType="java.util.Map">
+        SELECT
+            a.id,
+			a.group_code AS groupCode,
+			a.group_name AS groupName,
+			a.domain,
+			a.type_id AS typeId,
+			a.group_info AS groupInfo,
+			a.parent,
+			a.del_tag AS delTag,
+			a.operator_account AS operatorAccount,
+			DATE_FORMAT(a.create_time, '%Y-%m-%d %H:%i:%s') AS createTime,
+			DATE_FORMAT(a.update_time, '%Y-%m-%d %H:%i:%s') AS updateTime
+        FROM 
+        	author_group a LEFT JOIN author_group_user b ON a.id = b.group_id
+        WHERE (a.del_tag = '1' OR a.del_tag IS NULL)
+        AND a.group_code LIKE CONCAT('%', '-01')
+        AND b.account = #{account}
+        <include refid="author_group_where"/>
+    </select>
+    
+     <!-- 
+      ***
+      ***权限组人员管理
+      ***
+      -->
+    <sql id='author_user_where'>
+    	<if test="groupId != null">
+        	AND group_id = #{groupId}
+        </if>
+    	<if test="account != null">
+        	AND TRIM(UPPER(account)) LIKE UPPER(CONCAT(CONCAT('%',TRIM(#{account})),'%'))
+        </if>
+    	<if test="groupCode != null">
+        	AND TRIM(UPPER(group_code)) LIKE UPPER(CONCAT(CONCAT('%',TRIM(#{groupCode})),'%'))
+        </if>
+    	<if test="domain != null">
+        	AND TRIM(UPPER(domain)) LIKE UPPER(CONCAT(CONCAT('%',TRIM(#{domain})),'%'))
+        </if>
+    </sql>
+    <select id="sourceget_group_user_query" resultType="java.util.Map" parameterType="java.util.Map">
+        SELECT
+            a.account,
+            a.group_id groupId,
+            b.group_code groupCode,
+            b.group_name groupName            
+        FROM 
+        	author_group_user a LEFT JOIN author_group b ON a.group_id = b.id
+        WHERE 1 = 1
+        <include refid="author_user_where"/>
+        ORDER BY a.create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+    
+    <select id="sourceget_group_creator_query" resultType="java.util.Map" parameterType="java.util.Map">
+        SELECT
+            creator_account creatorAccount
+        FROM 
+        	author_group
+        WHERE id = #{groupId}
+    </select>
+    
+    
+    
+    <select id="sourceget_group_user_query_count" resultType="java.lang.Long" parameterType="java.util.Map">
+        SELECT
+            COUNT(*)
+        FROM 
+        	author_group_user a LEFT JOIN author_group b ON a.group_id = b.id
+        WHERE 1 = 1
+        <include refid="author_user_where"/>
+    </select>
+    
+    <insert id="sourceget_author_group_user_admin_add" parameterType="java.util.Map">
+    	INSERT INTO 
+    		author_group_user (group_id, account, create_time)
+    		SELECT id, #{account} AS account, CURRENT_TIMESTAMP AS create_time
+    		FROM author_group WHERE group_code = #{groupCode} AND domain = #{domain}
+    </insert>
+    
+        
+    <insert id="sourceget_author_group_user_add" parameterType="java.util.Map">
+    	INSERT INTO 
+    		author_group_user (group_id, account, create_time)
+    	VALUES (#{groupId}, #{account}, CURRENT_TIMESTAMP)
+    </insert>
+    
+    <delete id="sourceget_author_group_user_delete" parameterType="java.util.Map">
+		DELETE FROM 
+			author_group_user
+		WHERE 1 = 1
+			<if test="groupId != null">
+				<if test="mgm != null">
+				AND (group_id = #{groupId} OR group_id = (SELECT id FROM author_group WHERE mgm_id = #{groupId}))
+				</if>
+				<if test="mgm == null">
+				AND group_id = #{groupId}
+				</if>
+			</if>
+			<if test="account != null">
+			AND account = #{account}
+			</if>
+	</delete>
+    
+    
+
+    <!-- 
+    ***
+    ***权限资源管理
+    ***
+    -->
+    <sql id="author_source_where">
+		<if  test="groupId != null">
+        	AND (
+        		<!-- 自己本身关联的资源，以及父组关联的资源 -->
+        		d.id = #{groupId} OR d.id = (SELECT parent FROM author_group WHERE id = #{groupId})
+        	)  
+        </if>
+		<if  test="id != null">
+        	AND a.id = #{id}
+        </if>
+		<if  test="sourceCode != null">
+        	AND TRIM(UPPER(a.source_code)) LIKE UPPER(CONCAT(CONCAT('%',TRIM(#{sourceCode})),'%')) 
+        </if>
+        <if  test="sourceName != null">
+        	AND TRIM(UPPER(a.source_name)) LIKE UPPER(CONCAT(CONCAT('%',TRIM(#{sourceName})),'%')) 
+        </if>
+        <if  test="domain != null">
+        	AND TRIM(UPPER(a.domain)) LIKE UPPER(CONCAT(CONCAT('%',TRIM(#{domain})),'%'))  
+        </if>
+        <if  test="typeId != null">
+        	AND a.type_id = #{typeId}
+        </if>
+        <if  test="typeName != null">
+        	AND TRIM(UPPER(c.type_name)) LIKE UPPER(CONCAT(CONCAT('%',TRIM(#{typeName})),'%'))
+        </if>
+        <if  test="sourceInfo != null">
+        	AND TRIM(UPPER(a.source_info)) LIKE UPPER(CONCAT(CONCAT('%',TRIM(#{sourceInfo})),'%'))
+        </if>
+        <if  test="sourceProperty != null">
+        	AND TRIM(UPPER(a.source_property)) LIKE UPPER(CONCAT(CONCAT('%',TRIM(#{sourceProperty})),'%')) 
+        </if>
+	</sql>
+
+    <select id="sourceget_group_source_query_by_groupId" resultType="java.util.Map" parameterType="java.util.Map">
+        SELECT
+        	a.id,
+        	d.id groupId,
+        	a.source_code sourceCode,
+        	a.source_name sourceName,
+        	a.domain,
+        	a.type_id typeId,
+        	c.type_name typeName,
+        	a.source_info sourceInfo,
+        	a.source_property sourceProperty
+        FROM 
+        	author_source a JOIN author_group_source b ON a.id = b.source_id
+        	LEFT JOIN author_group_source_type c ON a.type_id = c.id
+        	LEFT JOIN author_group d ON d.id = b.group_id
+        WHERE (a.del_tag = '1' OR a.del_tag IS NULL)
+        <include refid="author_source_where"/>
+        ORDER BY a.id
+        LIMIT #{offset}, #{limit}
+    </select>
+    <select id="sourceget_group_source_query_by_groupId_count" resultType="java.lang.Long" parameterType="java.util.Map">
+        SELECT
+            COUNT(*)
+        FROM 
+        	author_source a JOIN author_group_source b ON a.id = b.source_id
+        	LEFT JOIN author_group_source_type c ON a.type_id = c.id
+        	LEFT JOIN author_group d ON d.id = b.group_id
+        WHERE (a.del_tag = '1' OR a.del_tag IS NULL)
+        <include refid="author_source_where"/>
+    </select> 
+    
+    <insert id="sourceget_group_source_add" parameterType="java.util.Map" >
+    	INSERT INTO 
+    		author_group_source (group_id, source_id, create_time)
+    	VALUES
+			(#{groupId}, #{sourceId}, CURRENT_TIMESTAMP)
+    </insert>
+    
+    <select id="sourceget_source_query" resultType="java.util.Map" parameterType="java.util.Map">
+        SELECT
+        	a.id sourceId      	
+        FROM 
+        	author_source a LEFT JOIN author_group_source b ON a.id = b.source_id
+        WHERE (a.del_tag = '1' OR a.del_tag IS NULL)
+        AND a.id NOT IN (SELECT source_id FROM author_group_source WHERE group_id = #{groupId} OR group_id = #{parent})
+        AND a.domain = #{domain}
+        AND a.type_id IN (SELECT id FROM author_group_source_type WHERE parent_id = #{groupType})
+        <if test="id != null">
+        	AND a.id = #{id}
+        </if>
+        ORDER BY a.id
+        LIMIT #{offset}, #{limit}
+    </select>
+    <select id="sourceget_source_query_count" resultType="java.lang.Long" parameterType="java.util.Map">
+        SELECT
+            COUNT(*)
+        FROM 
+        	author_source a LEFT JOIN author_group_source b ON a.id = b.source_id
+        WHERE (a.del_tag = '1' OR a.del_tag IS NULL)
+        AND a.id NOT IN (SELECT source_id FROM author_group_source WHERE group_id = #{groupId} OR group_id = #{parent})
+        AND a.domain = #{domain}
+        AND a.type_id IN (SELECT id FROM author_group_source_type WHERE parent_id = #{groupType})
+        <if test="id != null">
+        	AND a.id = #{id}
+        </if>
+    </select> 
+    
+    <select id="sourceget_group_source_query" resultType="java.util.Map" parameterType="java.util.Map">
+        SELECT
+        	a.id,
+        	a.source_code sourceCode,
+        	a.source_name sourceName,
+        	a.domain,
+        	a.type_id typeId,
+        	c.type_name typeName,
+        	c.parent_id groupTypeId,
+        	a.source_info sourceInfo,
+        	a.source_property sourceProperty
+        FROM 
+        	author_source a JOIN author_group_source_type c ON a.type_id = c.id
+        WHERE a.domain != 'super' AND a.domain != 'admin' AND (a.del_tag IS NULL OR a.del_tag = '1')
+        <include refid="author_source_where"/>
+        ORDER BY a.create_time
+        LIMIT #{offset}, #{limit}
+    </select>
+    <select id="sourceget_group_source_query_count" resultType="java.lang.Long" parameterType="java.util.Map">
+        SELECT
+        	COUNT(*)
+        FROM 
+        	author_source a JOIN author_group_source_type c ON a.type_id = c.id
+        WHERE a.domain != 'super' AND a.domain != 'admin' AND (a.del_tag IS NULL OR a.del_tag = '1')
+        <include refid="author_source_where"/>
+    </select>
+    
+    <select id="sourceget_group_source_queryByDomainAndSourceCode" resultType="AuthorSource" parameterType="java.util.Map">
+        SELECT
+        	id,
+        	source_code sourceCode,
+        	source_name sourceName,
+        	domain,
+        	del_tag delTag,
+        	type_id typeId,
+        	source_info sourceInfo,
+        	source_property sourceProperty
+        FROM 
+        	author_source
+        WHERE domain = #{domain} AND source_code = #{sourceCode}
+    </select>
+    
+    
+    <!-- 删除资源 -->
+    <update id="sourceget_author_source_del" parameterType="java.util.Map">
+		UPDATE
+			author_source
+		SET
+			del_tag = '0',
+			operator_account = #{operatorAccount},
+			update_time = CURRENT_TIMESTAMP
+		WHERE id = #{id} AND domain != 'super' AND domain != 'admin'
+	</update>
+	
+	<!-- 删除分组关联的资源 -->
+	<delete id="sourceget_author_groupsource_del" parameterType="java.util.Map">
+		DELETE FROM author_group_source
+		WHERE group_id = #{groupId} AND source_id = #{sourceId}
+	</delete>
+	
+	
+    <update id="sourceget_author_source_update" parameterType="AuthorSource">
+		UPDATE
+			author_source
+		SET
+			<if test='delTag != null'>
+			del_tag = #{delTag},
+			</if>
+			<if test='sourceCode != null'>
+			source_code = #{sourceCode},
+			</if>
+			<if test='sourceName != null'>
+			source_name = #{sourceName},
+			</if>
+			<if test='domain != null'>
+			domain = #{domain},
+			</if>
+			<if test='typeId != null'>
+			type_id = #{typeId},
+			</if>
+			<if test='sourceInfo != null'>
+			source_info = #{sourceInfo},
+			</if>
+			<if test='sourceProperty != null'>
+			source_property = #{sourceProperty},
+			</if>
+			update_time = CURRENT_TIMESTAMP
+		WHERE id = #{id} AND domain != 'super' AND domain != 'admin'
+	</update>
+	
+    <select id="sourceget_author_source_isInUse" resultType="java.lang.Long" parameterType="java.util.Map">
+        SELECT
+        	COUNT(*) count
+        FROM 
+        	author_source a JOIN author_group_source b ON a.id = b.source_id
+        	JOIN author_group c ON c.id = b.group_id        	
+        WHERE (c.del_tag IS NULL OR c.del_tag = '1') AND a.id = #{id}
+    </select>
+    
+    
+    
+    <insert id="sourceget_author_source_add" parameterType="AuthorSource" useGeneratedKeys="true" keyColumn="id" keyProperty="id">
+    	<selectKey keyProperty="id" resultType="java.lang.Long" order="AFTER">
+		SELECT LAST_INSERT_ID()
+		</selectKey>
+    	INSERT INTO 
+    		author_source (source_code, source_name, domain, type_id, source_info, source_property, create_time)
+    	VALUES
+			(#{sourceCode}, #{sourceName}, #{domain}, #{typeId}, #{sourceInfo}, #{sourceProperty}, CURRENT_TIMESTAMP)
+    </insert>
+    
+    <!-- 
+      **
+      **author_group_source组-资源关系表管理
+      **    
+      -->
+   <delete id="sourceget_author_group_source_delete" parameterType="java.util.Map">
+		DELETE FROM 
+			author_group_source
+		WHERE 1 = 1
+			<if test='groupId != null'>
+				<if test='mgm != null'>
+				AND (group_id = #{groupId} OR group_id = (SELECT id FROM author_group WHERE mgm_id = #{groupId}))
+				</if>
+				<if test='mgm = null'>
+				AND group_id = #{groupId}
+				</if>
+			</if>
+	</delete>
+</mapper>

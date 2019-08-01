@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:sofa="http://sofastack.io/schema/sofaboot"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://sofastack.io/schema/sofaboot   http://sofastack.io/schema/sofaboot.xsd"
+       default-autowire="byName">
+
+<!--     rest
+    <bean id="restFacadeImpl" class="com.yh.openapi.biz.service.impl.RestFacadeImpl"/>
+    <sofa:service ref="restFacadeImpl" interface="com.yh.openapi.common.service.facade.RestFacade">
+        <sofa:binding.rest/>
+    </sofa:service>
+
+    dubbo
+    <bean id="dubboFacadeImpl" class="com.yh.openapi.biz.service.impl.DubboFacadeImpl"/>
+    <sofa:service ref="dubboFacadeImpl" interface="com.yh.openapi.common.service.facade.DubboFacade">
+        <sofa:binding.dubbo/>
+    </sofa:service> -->
+    
+    <bean id="authorFacadeImpl" class="com.yh.sourceget.biz.service.impl.AuthorFacadeImpl"/>
+    <sofa:service ref="authorFacadeImpl" interface="com.yh.sourceget.common.service.facade.AuthorFacade">
+        <sofa:binding.dubbo/>
+    </sofa:service>
+    
+</beans>

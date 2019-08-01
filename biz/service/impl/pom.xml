@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>sourceget</artifactId>
+        <groupId>com.yh.sourceget</groupId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../../../pom.xml</relativePath>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.yh.sourceget</groupId>
+    <artifactId>sourceget-biz-service-impl</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+
+    <name>sourceget-biz-service-impl</name>
+    <description>sourceget-biz-service-impl</description>
+
+    <packaging>jar</packaging>
+
+    <properties>
+        <sourceget.core.engine>1.0.0.20181010</sourceget.core.engine>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.yh.sourceget</groupId>
+            <artifactId>sourceget-biz-share</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yh.sourceget</groupId>
+            <artifactId>sourceget-common-service-facade</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+
+    </dependencies>
+
+
+
+</project>

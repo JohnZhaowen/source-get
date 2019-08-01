@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>sourceget</artifactId>
+        <groupId>com.yh.sourceget</groupId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.yh.sourceget</groupId>
+    <artifactId>sourceget-core-share</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+
+    <name>sourceget-core-share</name>
+    <description>sourceget-core-share</description>
+
+    <packaging>jar</packaging>
+
+    <dependencies>
+        <!-- project depends -->
+        <dependency>
+            <groupId>com.yh.sourceget</groupId>
+            <artifactId>sourceget-common-service-integration</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.yh.sourceget</groupId>
+            <artifactId>sourceget-common-service-facade</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
+
+</project>
